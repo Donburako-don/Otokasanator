@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f8f4ef">
+<title>オトカサネーター</title>
+<style>
+:root{--bg:#f8f4ef;--paper:#fffdf9;--ink:#292723;--muted:#777168;--line:#e8dfd4;--accent:#8b6b9d;--accent-dark:#6c4d7d;--accent-soft:#f0e8f4;--gold:#c49b60;}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(ellipse at top,#fffdf9 0%,var(--bg) 62%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.6}
+main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:center;padding:14px 0 24px}.eyebrow{font-size:.78rem;letter-spacing:.18em;color:var(--accent-dark);font-weight:700}.hero h1{font-size:clamp(1.8rem,6vw,2.65rem);line-height:1.25;margin:10px 0 12px;letter-spacing:.03em}.hero p{color:var(--muted);margin:0;font-size:.95rem}.music-mark{font-size:1.6rem;letter-spacing:.35em;color:var(--accent);margin-bottom:7px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:22px;margin:14px 0;box-shadow:0 8px 26px #4a34200a}.panel h2{font-size:1.1rem;margin:0 0 16px}.people{display:grid;grid-template-columns:1fr 1fr;gap:14px}.person{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fffefa}.person-head{display:flex;align-items:center;gap:9px;font-weight:700;margin-bottom:12px}.dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}.person.b .dot{background:var(--gold)}.date-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:5px}.name-field{margin-bottom:10px}.field input{width:100%;min-width:0;border:1px solid #dcd2c7;border-radius:10px;background:white;padding:11px 9px;font:inherit;font-size:1rem;color:var(--ink)}.field input:focus{outline:2px solid #cdb8d9;border-color:var(--accent)}.hint{font-size:.78rem;color:var(--muted);margin:12px 0 0}
+.result{display:grid;grid-template-columns:1fr 1fr;gap:12px}.note-card{border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:#fff}.note-card .who{font-size:.77rem;color:var(--muted)}.note-card .notes{font-size:1.06rem;font-weight:700;margin-top:3px}.note-card .octave{font-size:.8rem;color:var(--muted);font-weight:500}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:17px}.share-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.btn.share{background:#f4eee7;color:var(--ink);border:1px solid var(--line);padding:11px 8px}.share-note{font-size:.8rem;color:var(--muted);margin:10px 0 0}.share-title{font-size:1.05rem;margin:0 0 12px}.btn{appearance:none;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-size:.93rem;font-weight:700;cursor:pointer;transition:transform .12s,opacity .12s}.btn:active{transform:scale(.98)}.btn.primary{background:var(--accent-dark);color:white;flex:1}.btn.secondary{background:var(--accent-soft);color:var(--accent-dark);flex:1}.btn:disabled{opacity:.45;cursor:not-allowed}.status{min-height:1.5em;font-size:.84rem;color:var(--muted);margin:12px 0 0}.keyboard{display:flex;justify-content:center;gap:5px;margin:18px auto 2px;max-width:520px}.key{flex:1;min-width:0;text-align:center;padding:11px 2px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-weight:700;font-size:.82rem}.key.black{background:#3b3540;color:white;border-color:#3b3540}.key.active{outline:3px solid #d8c4e3;background:#f2e8f7;color:#543463}.key.black.active{background:#755486;color:white}.legend{font-size:.8rem;color:var(--muted);margin:8px 0 0;text-align:center}.rules{font-size:.9rem;color:var(--muted);padding-left:1.2rem;margin:0}.rules li{margin:5px 0}.footer{text-align:center;color:var(--muted);font-size:.75rem;margin-top:24px}.error{color:#a53e43}
+@media(max-width:520px){main{padding:20px 13px 32px}.panel{padding:17px 14px;border-radius:18px}.people{grid-template-columns:1fr}.person{padding:14px}.result{gap:8px}.note-card{padding:11px}.btn{padding:12px 10px}.key{font-size:.72rem}.share-actions{grid-template-columns:1fr}.btn.share{width:100%}}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <div class="music-mark" aria-hidden="true">♫ ♬ ♫</div>
+  <h1>オトカサネーター</h1>
+  <p>ふたりの誕生日を音に変えて、重ねてみよう</p>
+</header>
+<section class="panel" aria-labelledby="birthday-title">
+  <h2 id="birthday-title">🎂 ふたりの誕生日</h2>
+  <div class="people">
+    <div class="person a">
+      <div class="person-head"><span class="dot"></span><span id="a-heading">ひとりめ</span></div>
+      <div class="field name-field"><label for="a-name">名前</label><input id="a-name" type="text" maxlength="30" placeholder="名前を入力"></div>
+      <div class="date-row">
+        <div class="field"><label for="a-month">月</label><input id="a-month" type="number" min="1" max="12" inputmode="numeric" placeholder="1" value="1"></div>
+        <div class="field"><label for="a-day">日</label><input id="a-day" type="number" min="1" max="31" inputmode="numeric" placeholder="1" value="1"></div>
+      </div>
+    </div>
+    <div class="person b">
+      <div class="person-head"><span class="dot"></span><span id="b-heading">ふたりめ</span></div>
+      <div class="field name-field"><label for="b-name">名前</label><input id="b-name" type="text" maxlength="30" placeholder="名前を入力"></div>
+      <div class="date-row">
+        <div class="field"><label for="b-month">月</label><input id="b-month" type="number" min="1" max="12" inputmode="numeric" placeholder="2" value="2"></div>
+        <div class="field"><label for="b-day">日</label><input id="b-day" type="number" min="1" max="31" inputmode="numeric" placeholder="2" value="2"></div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">生まれた年は入力しなくてOK。2月29日は誕生日として入力できます。</p>
+</section>
+<section class="panel" aria-labelledby="result-title">
+  <h2 id="result-title">🎼 ふたりの音</h2>
+  <div class="result" id="result" aria-live="polite">
+    <div class="note-card"><div class="who">ひとりめ・月</div><div class="notes">ド4</div></div>
+    <div class="note-card"><div class="who">ひとりめ・日</div><div class="notes">ド4</div></div>
+    <div class="note-card"><div class="who">ふたりめ・月</div><div class="notes">ド♯4</div></div>
+    <div class="note-card"><div class="who">ふたりめ・日</div><div class="notes">ド♯4</div></div>
+  </div>
+  <div class="keyboard" id="keyboard" aria-label="音名の目安"></div>
+  <p class="legend">音名の数字はオクターブ。例：ド4、ド5、ド6。</p>
+  <div class="actions">
+    <button class="btn primary" id="chord-btn" type="button">▶ 和音を同時に鳴らす</button>
+    <button class="btn secondary" id="arp-btn" type="button">♫ アルペジオで鳴らす</button>
+  </div>
+  <p class="status" id="status" role="status">再生すると、ピアノの音で聴けます。</p>
+</section>
+<section class="panel" aria-labelledby="share-title">
+  <h2 class="share-title" id="share-title">🔗 このふたりの音を共有</h2>
+  <div class="share-actions">
+    <button class="btn share" id="share-x" type="button">𝕏 Xで共有</button>
+    <button class="btn share" id="share-line" type="button">LINEで共有</button>
+    <button class="btn share" id="copy-link" type="button">🔗 リンクをコピー</button>
+  </div>
+  <p class="share-note">リンクを開くと、入力した名前と誕生日が再現されるよ。共有リンクには入力内容が含まれるので、個人情報は入れないでね。</p>
+  <p class="status" id="share-status" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+  <h2>音のルール</h2>
+  <ul class="rules">
+    <li>月は1月＝ド、2月＝ド♯……12月＝シ。</li>
+    <li>日は1〜12日がド〜シ、13〜24日は1オクターブ上、25日以降はさらに1オクターブ上。</li>
+    <li>同じ高さの音が重なったら、ふたりめ側の音を重ならなくなるまで1オクターブずつ上げます。</li>
+  </ul>
+</section>
+<footer class="footer">
+  <p>音声の読み込みにはインターネット接続が必要です。</p>
+  <p>音源・ライブラリについて</p>
+  <p>Piano samples: Salamander Grand Piano by Alexander Holm, licensed under <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a>. <a href="https://tonejs.github.io/audio/" target="_blank" rel="noopener noreferrer">音源配布元</a></p>
+  <p>Audio library: <a href="https://tonejs.github.io/" target="_blank" rel="noopener noreferrer">Tone.js</a>, licensed under the <a href="https://github.com/Tonejs/Tone.js/blob/dev/LICENSE.md" target="_blank" rel="noopener noreferrer">MIT License</a>.</p>
+</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const jpNames = ['ド','ド♯','レ','レ♯','ミ','ファ','ファ♯','ソ','ソ♯','ラ','ラ♯','シ'];
+  const toneNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const inputs = ['a-name','b-name','a-month','a-day','b-month','b-day'];
+  const status = $('status');
+  const shareStatus = $('share-status');
+  // Shared URLs restore the exact names and birthdays that produced the sound.
+  // New links use a compact Base64URL payload; older links remain supported.
+  function loadSharedState() {
+    // New links keep the encoded payload in the URL fragment (#s=...), which
+    // is not sent to the hosting server. Legacy query-string links still work.
+    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const params = new URLSearchParams(window.location.search);
+    const sharedPayload = fragment.get('s') || params.get('s');
+    if (sharedPayload) {
+      try {
+        const encoded = sharedPayload.replace(/-/g, '+').replace(/_/g, '/');
+        const binary = atob(encoded + '='.repeat((4 - encoded.length % 4) % 4));
+        const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+        const [name1, month1, day1, name2, month2, day2] = JSON.parse(new TextDecoder().decode(bytes));
+        $('a-name').value = name1 ?? '';
+        $('a-month').value = month1 ?? '1';
+        $('a-day').value = day1 ?? '1';
+        $('b-name').value = name2 ?? '';
+        $('b-month').value = month2 ?? '2';
+        $('b-day').value = day2 ?? '2';
+        return true;
+      } catch (e) {
+        // Fall back to the older query format if the compact payload is invalid.
+      }
+    }
+    const fields = [
+      ['a-name','n1'], ['a-month','m1'], ['a-day','d1'],
+      ['b-name','n2'], ['b-month','m2'], ['b-day','d2']
+    ];
+    let found = false;
+    for (const [id,key] of fields) {
+      if (params.has(key)) {
+        $(id).value = params.get(key);
+        found = true;
+      }
+    }
+    return found;
+  }
+  loadSharedState();
+  let sampler = null, loaded = false, playing = false, currentNotes = [];
+  const semitoneMidi = (month) => 60 + month - 1; // C4 baseline
+  const dayMidi = (day) => 60 + day - 1; // day 1=C4; octave rises every 12 days
+  const midiToTone = midi => {
+    const octave = Math.floor(midi / 12) - 1;
+    return toneNames[midi % 12] + octave;
+  };
+  const midiToJp = midi => jpNames[midi % 12] + (Math.floor(midi / 12) - 1);
+  const dateIsValid = (m,d) => Number.isInteger(m) && Number.isInteger(d) && m >= 1 && m <= 12 && d >= 1 && d <= new Date(2000,m,0).getDate();
+  function getBirthday(prefix) {
+    const m = Number($(prefix+'-month').value), d = Number($(prefix+'-day').value);
+    if (!$(prefix+'-month').value || !$(prefix+'-day').value || !dateIsValid(m,d)) return null;
+    return {month:m,day:d};
+  }
+  function displayName(prefix, fallback) {
+    const value = $(prefix+'-name').value.trim();
+    return value || fallback;
+  }
+  function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function calculate() {
+    const a = getBirthday('a'), b = getBirthday('b');
+    if (!a || !b) return {error:'月日を正しく入力してね（2月30日などは入力できません）。'};
+    const notes = [
+      {owner:displayName('a','ひとりめ'),part:'月',midi:semitoneMidi(a.month),person:'a'},
+      {owner:displayName('a','ひとりめ'),part:'日',midi:dayMidi(a.day),person:'a'},
+      {owner:displayName('b','ふたりめ'),part:'月',midi:semitoneMidi(b.month),person:'b'},
+      {owner:displayName('b','ふたりめ'),part:'日',midi:dayMidi(b.day),person:'b'}
+    ];
+    // Aさんの音はそのまま。Bさん側だけ、既存の同音とぶつかる場合に上げる。
+    const occupied = new Set(notes.slice(0,2).map(n => n.midi));
+    for (let i=2;i<4;i++) {
+      while (occupied.has(notes[i].midi)) notes[i].midi += 12;
+      occupied.add(notes[i].midi);
+    }
+    return {notes};
+  }
+  function render() {
+    $('a-heading').textContent = displayName('a','ひとりめ');
+    $('b-heading').textContent = displayName('b','ふたりめ');
+    const calc = calculate();
+    if (calc.error) {
+      $('result').innerHTML = `<div class="note-card" style="grid-column:1/-1"><div class="notes error">${calc.error}</div></div>`;
+      currentNotes = []; $('chord-btn').disabled = true; $('arp-btn').disabled = true; $('keyboard').innerHTML=''; return;
+    }
+    currentNotes = calc.notes;
+    $('result').innerHTML = currentNotes.map(n => `<div class="note-card"><div class="who">${escapeHtml(n.owner)}・${n.part}</div><div class="notes">${midiToJp(n.midi)}</div></div>`).join('');
+    $('chord-btn').disabled = false; $('arp-btn').disabled = false;
+    const pitches = [...new Set(currentNotes.map(n=>n.midi%12))];
+    $('keyboard').innerHTML = jpNames.map((name,i)=>`<div class="key ${[1,3,6,8,10].includes(i)?'black':''} ${pitches.includes(i)?'active':''}">${name}</div>`).join('');
+  }
+  function setupSampler() {
+    if (sampler || !window.Tone) return;
+    // Multiple anchor samples keep the piano timbre usable across the generated range.
+    sampler = new Tone.Sampler({
+      urls: {'A0':'A0.mp3','C1':'C1.mp3','D#1':'Ds1.mp3','F#1':'Fs1.mp3','A1':'A1.mp3','C2':'C2.mp3','D#2':'Ds2.mp3','F#2':'Fs2.mp3','A2':'A2.mp3','C3':'C3.mp3','D#3':'Ds3.mp3','F#3':'Fs3.mp3','A3':'A3.mp3','C4':'C4.mp3','D#4':'Ds4.mp3','F#4':'Fs4.mp3','A4':'A4.mp3','C5':'C5.mp3','D#5':'Ds5.mp3','F#5':'Fs5.mp3','A5':'A5.mp3','C6':'C6.mp3','D#6':'Ds6.mp3','F#6':'Fs6.mp3','A6':'A6.mp3','C7':'C7.mp3','D#7':'Ds7.mp3','F#7':'Fs7.mp3','A7':'A7.mp3','C8':'C8.mp3'},
+      release: 1.2,
+      baseUrl: 'https://tonejs.github.io/audio/salamander/',
+      onload: () => { loaded = true; status.textContent = '準備できたよ。和音かアルペジオを鳴らしてみてね。'; },
+      onerror: () => { status.textContent = 'ピアノ音源を読み込めませんでした。ネット接続を確認して、もう一度試してね。'; }
+    }).toDestination();
+  }
+  async function play(mode) {
+    if (playing) return;
+    const calc = calculate();
+    if (calc.error) { render(); return; }
+    if (!window.Tone) { status.textContent = '音源ライブラリを読み込めませんでした。ネット接続を確認してね。'; return; }
+    playing = true; $('chord-btn').disabled = true; $('arp-btn').disabled = true;
+    try {
+      await Tone.start(); setupSampler();
+      if (!loaded) { status.textContent = 'ピアノの音を準備中…初回は少し時間がかかるよ。'; await Tone.loaded(); loaded = true; }
+      const ordered = [...calc.notes].sort((x,y)=>x.midi-y.midi);
+      if (mode === 'chord') {
+        const now = Tone.now()+0.04;
+        ordered.forEach(n => sampler.triggerAttackRelease(midiToTone(n.midi), 1.65, now, 0.82));
+        status.textContent = '4つの音を同時に再生中…';
+        await new Promise(r=>setTimeout(r,1900));
+      } else {
+        status.textContent = '低い音から高い音へ再生中…';
+        const now = Tone.now()+0.05;
+        ordered.forEach((n,i)=>sampler.triggerAttackRelease(midiToTone(n.midi), 1.1, now+i*0.38, 0.85));
+        await new Promise(r=>setTimeout(r,ordered.length*380+1250));
+      }
+      status.textContent = '音が鳴らないときは、ページを再読み込みしてね。';
+    } catch (e) {
+      status.textContent = '再生できませんでした。ページを開き直して、もう一度試してね。';
+    } finally { playing = false; $('chord-btn').disabled = false; $('arp-btn').disabled = false; }
+  }
+  inputs.forEach(id => $(id).addEventListener('input',render));
+  $('chord-btn').addEventListener('click',()=>play('chord'));
+  $('arp-btn').addEventListener('click',()=>play('arp'));
+
+  function makeShareUrl() {
+    const calc = calculate();
+    if (calc.error) {
+      render();
+      shareStatus.textContent = '共有する前に、ふたりの誕生日を正しく入力してね。';
+      return null;
+    }
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    const payload = [
+      $('a-name').value.trim(), $('a-month').value, $('a-day').value,
+      $('b-name').value.trim(), $('b-month').value, $('b-day').value
+    ];
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    let binary = '';
+    bytes.forEach(byte => binary += String.fromCharCode(byte));
+    const compact = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    // Fragment avoids putting names into the query string/server request.
+    // It is encoding, not encryption: anyone with the link may decode the data.
+    url.hash = 's=' + compact;
+    return url.toString();
+  }
+  function shareText() {
+    return 'ふたりの音を聞いてみてね\n#オトカサネーター';
+  }
+  $('share-x').addEventListener('click', () => {
+    const url = makeShareUrl();
+    if (!url) return;
+    const intent = new URL('https://x.com/intent/tweet');
+    intent.searchParams.set('text', shareText());
+    intent.searchParams.set('url', url);
+    window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+    shareStatus.textContent = 'Xの投稿画面を開いたよ。内容を確認して投稿してね。';
+  });
+  $('share-line').addEventListener('click', () => {
+    const url = makeShareUrl();
+    if (!url) return;
+    const line = new URL('https://social-plugins.line.me/lineit/share');
+    line.searchParams.set('url', url);
+    line.searchParams.set('text', shareText());
+    window.open(line.toString(), '_blank', 'noopener,noreferrer');
+    shareStatus.textContent = 'LINEの共有画面を開いたよ。送信先を選んでね。';
+  });
+  $('copy-link').addEventListener('click', async () => {
+    const url = makeShareUrl();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      shareStatus.textContent = 'このふたりの音のリンクをコピーしたよ！';
+    } catch (e) {
+      const area = document.createElement('textarea');
+      area.value = url;
+      area.setAttribute('readonly','');
+      area.style.position = 'fixed'; area.style.opacity = '0';
+      document.body.appendChild(area); area.select();
+      const copied = document.execCommand('copy');
+      area.remove();
+      shareStatus.textContent = copied ? 'このふたりの音のリンクをコピーしたよ！' : 'コピーできなかったので、もう一度試してね。';
+    }
+  });
+  render(); setupSampler();
+})();
+</script>
+</body>
+</html>
