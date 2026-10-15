@@ -57,7 +57,7 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
     <button class="btn primary" id="chord-btn" type="button">▶ 和音を同時に鳴らす</button>
     <button class="btn secondary" id="arp-btn" type="button">♫ アルペジオで鳴らす</button>
   </div>
-  <p class="status" id="status" role="status">再生すると、ピアノの音で聴けます。</p>
+  <p class="status" id="status" role="status">初回はピアノ音源の読み込みに少し時間がかかることがあります。</p>
   <div class="panel" style="margin:18px 0 0;padding:16px;background:#fbf7fc;border-color:#e3d6e9">
     <h2 style="margin-bottom:8px">🎞️ 音つき動画を保存</h2>
     <p class="hint" style="margin-top:0">名前・誕生日・音階と、実際のピアノ音を入れた縦型動画を作るよ。和音とアルペジオは別々に保存できます。</p>
@@ -65,7 +65,7 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
       <button class="btn primary" id="video-chord-btn" type="button">🎬 和音の動画を保存</button>
       <button class="btn secondary" id="video-arp-btn" type="button">🎬 アルペジオの動画を保存</button>
     </div>
-    <p class="status" id="video-status" role="status" aria-live="polite">動画作成には少し時間がかかることがあります。対応ブラウザではWebM形式で保存されます。</p>
+    <p class="status" id="video-status" role="status" aria-live="polite">動画作成には少し時間がかかることがあります。iPhoneなどでWebMになった場合は、MP4に変換して保存します。</p>
   </div>
 </section>
 <section class="panel" aria-labelledby="share-title">
@@ -275,9 +275,12 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
     if (!window.Tone) { status.textContent = '音源ライブラリを読み込めませんでした。ネット接続を確認してね。'; return; }
     playing = true; $('chord-btn').disabled = true; $('arp-btn').disabled = true;
     try {
+      // Start/resume audio from the user's tap, then resume again after
+      // asynchronous sample loading (helps with iOS Safari audio contexts).
       await Tone.start();
       if (!loaded) status.textContent = 'ピアノの音を準備中…初回は少し時間がかかるよ。';
       await setupSampler();
+      if (Tone.context.state !== 'running') await Tone.context.resume();
       const ordered = [...calc.notes].sort((x,y)=>x.midi-y.midi);
       if (mode === 'chord') {
         const now = Tone.now()+0.04;
@@ -331,6 +334,47 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
     ctx.fillStyle='#777168';ctx.font='27px sans-serif';ctx.fillText('#オトカサネーター',w/2,1660);
     ctx.fillStyle='#777168';ctx.font='22px sans-serif';ctx.fillText('誕生日から音階を計算しています',w/2,1750);
   }
+  let ffmpegInstancePromise = null;
+  async function convertWebmToMp4(webmBlob) {
+    // ffmpeg.wasm runs entirely in the browser. The input file is never uploaded.
+    if (!ffmpegInstancePromise) {
+      ffmpegInstancePromise = (async () => {
+        const { FFmpeg } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+        const { toBlobURL } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js');
+        const ffmpeg = new FFmpeg();
+        const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+        const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+        const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+        await ffmpeg.load({ coreURL, wasmURL });
+        return ffmpeg;
+      })();
+    }
+    const ffmpeg = await ffmpegInstancePromise;
+    const inputName = `input-${Date.now()}.webm`;
+    const outputName = `output-${Date.now()}.mp4`;
+    try {
+      await ffmpeg.writeFile(inputName, new Uint8Array(await webmBlob.arrayBuffer()));
+      await ffmpeg.exec([
+        '-i', inputName,
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-movflags', '+faststart',
+        outputName
+      ]);
+      const data = await ffmpeg.readFile(outputName);
+      return new Blob([data], { type: 'video/mp4' });
+    } catch (error) {
+      ffmpegInstancePromise = null;
+      throw new Error('MP4への変換に失敗しました。ブラウザを再読み込みして再試行してください。');
+    } finally {
+      try { await ffmpeg.deleteFile(inputName); } catch (e) {}
+      try { await ffmpeg.deleteFile(outputName); } catch (e) {}
+    }
+  }
+
   async function saveVideo(mode) {
     const videoStatus=$('video-status');
     if (recording || playing) { videoStatus.textContent='再生中は動画を作れないので、終わってから試してね。'; return; }
@@ -345,7 +389,9 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
     recording=true; $('video-chord-btn').disabled=true;$('video-arp-btn').disabled=true;
     try {
       videoStatus.textContent='ピアノ音源を準備中…初回は少し待ってね。';
-      await Tone.start(); await setupSampler();
+      await Tone.start();
+      await setupSampler();
+      if (Tone.context.state !== 'running') await Tone.context.resume();
       const audioContext=Tone.context.rawContext;
       audioDest=audioContext.createMediaStreamDestination();
       sampler.connect(audioDest);
@@ -374,13 +420,23 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
       else ordered.forEach((n,i)=>sampler.triggerAttackRelease(midiToTone(n.midi),1.65,now+i*0.65,0.85));
       await new Promise(resolve=>setTimeout(resolve,duration));
       recorder.stop(); await stopped;
-      const type=mimeType||'video/webm'; const blob=new Blob(chunks,{type});
-      const ext=type.includes('mp4')?'mp4':'webm';
+      const type=mimeType||'video/webm';
+      let blob=new Blob(chunks,{type});
+      let ext=type.includes('mp4')?'mp4':'webm';
+
+      // If native MP4 recording is unavailable (common on iOS browsers),
+      // transcode the recorded WebM locally in the browser with ffmpeg.wasm.
+      // The video and audio stay on the device; no upload is performed.
+      if (ext !== 'mp4') {
+        videoStatus.textContent='iPhoneでも共有しやすいMP4に変換中…初回は変換エンジンの読み込みに時間がかかるよ。';
+        blob = await convertWebmToMp4(blob);
+        ext = 'mp4';
+      }
       const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`オトカサネーター_${mode==='chord'?'和音':'アルペジオ'}.${ext}`;document.body.appendChild(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(a.href),60000);
-      videoStatus.textContent=`動画を保存したよ！${ext.toUpperCase()}形式です。スマホによっては写真アプリではなく「ファイル」に保存されることがあります。`;
+      videoStatus.textContent=`動画を保存したよ！${ext.toUpperCase()}形式です。iPhoneでは「ファイル」に保存された場合、共有メニューから「ビデオを保存」を選べることがあります。`;
     } catch(e) {
-      console.error('動画保存エラー:',e); videoStatus.textContent='動画を作れなかったよ。ページを再読み込みして、もう一度試してね。';
+      console.error('動画保存エラー:',e); videoStatus.textContent=e && e.message && e.message.includes('MP4への変換') ? e.message : '動画を作れなかったよ。通信状態を確認してページを再読み込みし、もう一度試してね。';
     } finally {
       if(stream) stream.getTracks().forEach(t=>t.stop());
       if(audioDest && sampler) { try{sampler.disconnect(audioDest);}catch(e){} }
