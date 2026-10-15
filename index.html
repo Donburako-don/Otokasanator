@@ -58,6 +58,15 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
     <button class="btn secondary" id="arp-btn" type="button">♫ アルペジオで鳴らす</button>
   </div>
   <p class="status" id="status" role="status">再生すると、ピアノの音で聴けます。</p>
+  <div class="panel" style="margin:18px 0 0;padding:16px;background:#fbf7fc;border-color:#e3d6e9">
+    <h2 style="margin-bottom:8px">🎞️ 音つき動画を保存</h2>
+    <p class="hint" style="margin-top:0">名前・誕生日・音階と、実際のピアノ音を入れた縦型動画を作るよ。和音とアルペジオは別々に保存できます。</p>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn primary" id="video-chord-btn" type="button">🎬 和音の動画を保存</button>
+      <button class="btn secondary" id="video-arp-btn" type="button">🎬 アルペジオの動画を保存</button>
+    </div>
+    <p class="status" id="video-status" role="status" aria-live="polite">動画作成には少し時間がかかることがあります。対応ブラウザではWebM形式で保存されます。</p>
+  </div>
 </section>
 <section class="panel" aria-labelledby="share-title">
   <h2 class="share-title" id="share-title">🔗 このふたりの音を共有</h2>
@@ -164,6 +173,7 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
   }
   restoreInputState();
   let sampler = null, samplerLoadPromise = null, loaded = false, playing = false, currentNotes = [];
+  let recording = false;
   const semitoneMidi = (month) => 60 + month - 1; // C4 baseline
   const dayMidi = (day) => 60 + day - 1; // day 1=C4; octave rises every 12 days
   const midiToTone = midi => {
@@ -286,9 +296,103 @@ main{width:min(760px,100%);margin:auto;padding:28px 18px 44px}.hero{text-align:c
       status.textContent = '音が準備できなかったよ。通信状態を確認して、もう一度再生してね。';
     } finally { playing = false; $('chord-btn').disabled = false; $('arp-btn').disabled = false; }
   }
+
+  function roundedRect(ctx,x,y,w,h,r) {
+    ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fill();
+  }
+  function drawVideoFrame(ctx, canvas, mode, notes, phase, names, dates) {
+    const w=canvas.width,h=canvas.height;
+    const grad=ctx.createLinearGradient(0,0,w,h); grad.addColorStop(0,'#fffaf5'); grad.addColorStop(1,'#eee4f3');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#8b6b9d'; ctx.globalAlpha=.12;
+    ctx.beginPath(); ctx.arc(80,150,170,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w-30,h-180,230,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    ctx.textAlign='center'; ctx.fillStyle='#6c4d7d'; ctx.font='bold 44px sans-serif'; ctx.fillText('♫  オトカサネーター  ♬',w/2,125);
+    ctx.fillStyle='#777168'; ctx.font='30px sans-serif'; ctx.fillText('ふたりの誕生日から生まれた音',w/2,185);
+    const cards=[{name:names[0],date:dates[0],color:'#8b6b9d',sub:'ひとりめ'},{name:names[1],date:dates[1],color:'#b58a4e',sub:'ふたりめ'}];
+    cards.forEach((p,i)=>{
+      const y=260+i*190; ctx.fillStyle='#fffdf9'; roundedRect(ctx,w/2-430,y,860,150,28);
+      ctx.fillStyle=p.color; ctx.beginPath();ctx.arc(w/2-365,y+48,12,0,Math.PI*2);ctx.fill();
+      ctx.textAlign='left'; ctx.fillStyle='#292723';ctx.font='bold 38px sans-serif';ctx.fillText((p.name||p.sub).slice(0,20),w/2-330,y+62);
+      ctx.fillStyle='#777168';ctx.font='30px sans-serif';ctx.fillText(p.date,w/2-330,y+108);
+    });
+    ctx.textAlign='center';ctx.fillStyle='#292723';ctx.font='bold 42px sans-serif';ctx.fillText(mode==='chord'?'和音':'アルペジオ',w/2,700);
+    ctx.fillStyle='#777168';ctx.font='28px sans-serif';ctx.fillText(mode==='chord'?'4つの音を同時に':'低い音から高い音へ',w/2,750);
+    const sorted=[...notes].sort((a,b)=>a.midi-b.midi);
+    const startY=850, gap=145;
+    sorted.forEach((n,i)=>{
+      const y=startY+i*gap; const active=phase===i || (mode==='chord'&&phase===-1);
+      ctx.fillStyle=active?'#e7d8ef':'#fffdf9'; roundedRect(ctx,w/2-390,y,780,112,22);
+      ctx.strokeStyle=active?'#8b6b9d':'#e8dfd4';ctx.lineWidth=active?5:2;ctx.stroke();
+      ctx.fillStyle=n.person==='a'?'#8b6b9d':'#b58a4e';ctx.font='bold 25px sans-serif';ctx.textAlign='left';ctx.fillText(`${n.owner}・${n.part}`,w/2-350,y+42);
+      ctx.fillStyle='#292723';ctx.font='bold 38px sans-serif';ctx.textAlign='right';ctx.fillText(midiToJp(n.midi),w/2+345,y+70);
+    });
+    ctx.textAlign='center';ctx.fillStyle='#6c4d7d';ctx.font='bold 34px sans-serif';ctx.fillText('ふたりの音を聞いてみてね',w/2,1600);
+    ctx.fillStyle='#777168';ctx.font='27px sans-serif';ctx.fillText('#オトカサネーター',w/2,1660);
+    ctx.fillStyle='#777168';ctx.font='22px sans-serif';ctx.fillText('誕生日から音階を計算しています',w/2,1750);
+  }
+  async function saveVideo(mode) {
+    const videoStatus=$('video-status');
+    if (recording || playing) { videoStatus.textContent='再生中は動画を作れないので、終わってから試してね。'; return; }
+    const calc=calculate(); if(calc.error){render();videoStatus.textContent='誕生日を正しく入力してね。';return;}
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { videoStatus.textContent='このブラウザは動画保存に対応していないみたい。最新版のChromeまたはSafariで試してね。';return; }
+    const canvas=document.createElement('canvas'); canvas.width=1080;canvas.height=1920;
+    const ctx=canvas.getContext('2d');
+    const names=[displayName('a','ひとりめ'),displayName('b','ふたりめ')];
+    const dates=[`${$('a-month').value}月${$('a-day').value}日`,`${$('b-month').value}月${$('b-day').value}日`];
+    const ordered=[...calc.notes].sort((a,b)=>a.midi-b.midi);
+    let stream=null, audioDest=null, recorder=null, chunks=[];
+    recording=true; $('video-chord-btn').disabled=true;$('video-arp-btn').disabled=true;
+    try {
+      videoStatus.textContent='ピアノ音源を準備中…初回は少し待ってね。';
+      await Tone.start(); await setupSampler();
+      const audioContext=Tone.context.rawContext;
+      audioDest=audioContext.createMediaStreamDestination();
+      sampler.connect(audioDest);
+      const videoStream=canvas.captureStream(30);
+      stream=new MediaStream([...videoStream.getVideoTracks(),...audioDest.stream.getAudioTracks()]);
+      const mimeTypes=['video/mp4;codecs=h264,aac','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+      const mimeType=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t));
+      recorder=new MediaRecorder(stream,mimeType?{mimeType}:undefined);
+      recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+      const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('動画の録画に失敗しました'));});
+      const duration=mode==='chord'?3300:4700;
+      let start=performance.now();
+      function animate(now){
+        const elapsed=now-start; let phase=-2;
+        if(mode==='chord') phase=elapsed<1900?-1:-2;
+        else phase=Math.min(3,Math.floor(Math.max(0,elapsed-250)/650));
+        drawVideoFrame(ctx,canvas,mode,ordered,phase,names,dates);
+        if(elapsed<duration) requestAnimationFrame(animate);
+      }
+      drawVideoFrame(ctx,canvas,mode,ordered,-2,names,dates);
+      recorder.start(200); requestAnimationFrame(animate);
+      videoStatus.textContent='動画を録画中…この画面を閉じずに待ってね。';
+      await new Promise(resolve=>setTimeout(resolve,250));
+      const now=Tone.now()+0.08;
+      if(mode==='chord') ordered.forEach(n=>sampler.triggerAttackRelease(midiToTone(n.midi),2.5,now,0.85));
+      else ordered.forEach((n,i)=>sampler.triggerAttackRelease(midiToTone(n.midi),1.65,now+i*0.65,0.85));
+      await new Promise(resolve=>setTimeout(resolve,duration));
+      recorder.stop(); await stopped;
+      const type=mimeType||'video/webm'; const blob=new Blob(chunks,{type});
+      const ext=type.includes('mp4')?'mp4':'webm';
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`オトカサネーター_${mode==='chord'?'和音':'アルペジオ'}.${ext}`;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+      videoStatus.textContent=`動画を保存したよ！${ext.toUpperCase()}形式です。スマホによっては写真アプリではなく「ファイル」に保存されることがあります。`;
+    } catch(e) {
+      console.error('動画保存エラー:',e); videoStatus.textContent='動画を作れなかったよ。ページを再読み込みして、もう一度試してね。';
+    } finally {
+      if(stream) stream.getTracks().forEach(t=>t.stop());
+      if(audioDest && sampler) { try{sampler.disconnect(audioDest);}catch(e){} }
+      recording=false;$('video-chord-btn').disabled=false;$('video-arp-btn').disabled=false;
+    }
+  }
+
   inputs.forEach(id => $(id).addEventListener('input', () => { saveInputState(); render(); }));
   $('chord-btn').addEventListener('click',()=>play('chord'));
   $('arp-btn').addEventListener('click',()=>play('arp'));
+  $('video-chord-btn').addEventListener('click',()=>saveVideo('chord'));
+  $('video-arp-btn').addEventListener('click',()=>saveVideo('arp'));
 
   function makeShareUrl() {
     const calc = calculate();
